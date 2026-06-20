@@ -1,0 +1,242 @@
+.main {
+  background-color: var(--color-bg);
+  min-height: 100vh;
+  padding: 32px 0 60px;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* User Info Card */
+.profileCard {
+  background-color: var(--color-white);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.avatarWrapper {
+  flex-shrink: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background-color: var(--color-light-gray);
+  overflow: hidden;
+  border: 2px solid var(--color-primary-teal);
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.userInfo {
+  flex: 1;
+}
+
+.userName {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  margin-bottom: 8px;
+}
+
+.userDetails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.detailItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.editButton {
+  padding: 10px 20px;
+  background-color: var(--color-white);
+  color: var(--color-primary-dark);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.editButton:hover {
+  background-color: var(--color-light-gray);
+  border-color: var(--color-primary-dark);
+}
+
+/* Tabs */
+.tabsContainer {
+  background-color: var(--color-white);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  min-height: 400px;
+  overflow: hidden;
+}
+
+.tabHeader {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-light-gray);
+}
+
+.tabButton {
+  padding: 14px 8px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+  white-space: normal;
+  word-break: break-word;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.tabButton:hover {
+  color: var(--color-primary-teal);
+  background-color: var(--color-white);
+}
+
+.tabButton.active {
+  color: var(--color-primary-teal);
+  background-color: var(--color-white);
+  border-bottom-color: var(--color-primary-teal);
+  font-weight: 700;
+}
+
+/* Tab Content */
+.tabContent {
+  padding: 24px;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.emptyStateIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.emptyStateTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  margin-bottom: 8px;
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+/* Settings Form */
+.settingsForm {
+  max-width: 600px;
+}
+
+.formGroup {
+  margin-bottom: 20px;
+}
+
+.label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  margin-bottom: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  background-color: var(--color-white);
+  transition: all 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary-teal);
+  box-shadow: 0 0 0 3px rgba(0, 181, 106, 0.1);
+}
+
+.saveButton {
+  padding: 12px 24px;
+  background-color: var(--color-primary-dark);
+  color: var(--color-white);
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.saveButton:hover {
+  background-color: var(--color-primary-teal);
+  transform: translateY(-2px);
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+  .main {
+    padding: 20px 0 60px;
+  }
+
+  .profileCard {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .userDetails {
+    justify-content: center;
+  }
+
+  .tabButton {
+    padding: 12px 4px;
+    font-size: 12px;
+    min-height: 52px;
+  }
+
+  .productGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .tabContent {
+    padding: 16px;
+  }
+}

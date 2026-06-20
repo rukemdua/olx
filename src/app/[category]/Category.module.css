@@ -1,0 +1,156 @@
+.main {
+  background-color: var(--color-bg);
+  min-height: 100vh;
+  padding: 32px 0 60px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.content {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.sidebar {
+  flex: 0 0 250px;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 24px;
+  position: sticky;
+  top: 100px;
+}
+
+.filterGroup {
+  margin-bottom: 24px;
+}
+
+.filterGroup:last-child {
+  margin-bottom: 0;
+}
+
+.filterTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  margin-bottom: 16px;
+}
+
+.filterList {
+  list-style: none;
+}
+
+.filterList li {
+  font-size: 14px;
+  color: var(--color-text-main);
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.filterList li:hover {
+  color: var(--color-primary-teal);
+}
+
+.filterList .active {
+  font-weight: 700;
+  color: var(--color-primary-teal);
+}
+
+.priceInputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary-teal);
+}
+
+.productGrid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+  .content {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    flex: none;
+    position: static;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    gap: 16px;
+    background-color: var(--color-white);
+  }
+  .filterGroup {
+    margin-bottom: 0;
+  }
+  .filterTitle {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .filterList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .filterList li {
+    margin-bottom: 0;
+    background-color: var(--color-light-gray);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .filterList .active {
+    background-color: var(--color-primary-teal);
+    color: var(--color-white);
+  }
+  .priceInputs {
+    width: 100%;
+  }
+  .productGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}

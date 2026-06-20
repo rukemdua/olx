@@ -1,0 +1,506 @@
+.main {
+  background-color: var(--color-bg);
+  min-height: 100vh;
+  padding: 32px 0 60px;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* Page Header */
+.pageHeader {
+  margin-bottom: 32px;
+}
+
+.pageTitle {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  margin-bottom: 8px;
+}
+
+.pageSubtitle {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+/* Progress Steps */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 32px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.stepNumber {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--color-light-gray);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.stepLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.stepLine {
+  flex: 1;
+  height: 2px;
+  background-color: var(--color-border);
+  margin: 0 8px;
+  transition: background-color 0.3s ease;
+}
+
+.step.active .stepNumber {
+  background-color: var(--color-primary-teal);
+  color: white;
+}
+
+.step.active .stepLabel {
+  color: var(--color-primary-teal);
+}
+
+.step.done .stepNumber {
+  background-color: var(--color-primary-dark);
+  color: white;
+}
+
+.step.done .stepLabel {
+  color: var(--color-primary-dark);
+}
+
+.stepLine.done {
+  background-color: var(--color-primary-dark);
+}
+
+/* Form Card */
+.formCard {
+  background-color: var(--color-white);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  padding: 32px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--color-light-gray);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sectionIcon {
+  font-size: 22px;
+}
+
+/* Form Groups */
+.formGroup {
+  margin-bottom: 20px;
+}
+
+.label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  margin-bottom: 8px;
+}
+
+.required {
+  color: #e53e3e;
+  margin-left: 2px;
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  background-color: var(--color-white);
+  color: var(--color-text-main);
+  transition: all 0.2s ease;
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--color-primary-teal);
+  box-shadow: 0 0 0 3px rgba(0, 181, 106, 0.1);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.6;
+}
+
+.inputHint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.charCount {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: right;
+  margin-top: 4px;
+}
+
+/* Condition Selector */
+.conditionGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.conditionOption {
+  display: none;
+}
+
+.conditionLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.conditionLabel:hover {
+  border-color: var(--color-primary-teal);
+  color: var(--color-primary-teal);
+  background-color: rgba(0, 181, 106, 0.05);
+}
+
+.conditionOption:checked + .conditionLabel {
+  border-color: var(--color-primary-teal);
+  background-color: rgba(0, 181, 106, 0.08);
+  color: var(--color-primary-teal);
+}
+
+.conditionIcon {
+  font-size: 28px;
+}
+
+/* Price Input */
+.priceWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pricePrefix {
+  position: absolute;
+  left: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.priceInput {
+  padding-left: 48px !important;
+}
+
+/* ============================================
+   Photo Upload — Two-Wrapper Layout
+============================================ */
+
+/* Wrapper luar: 2 kolom (main kiri | thumbs kanan) */
+.photoArea {
+  display: flex;
+  gap: 10px;
+  height: 260px;
+}
+
+/* Foto utama mengisi tinggi penuh kolom kiri */
+.mainSlot {
+  flex: 0 0 50%;
+  height: 100%;
+}
+
+/* Kolom kanan: grid 2x2 */
+.photoThumbs {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 10px;
+}
+
+/* Slot dasar (dipakai oleh mainSlot dan item di photoThumbs) */
+.photoSlot {
+  border: 2px dashed var(--color-border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--color-light-gray);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.photoSlot:hover {
+  border-color: var(--color-primary-teal);
+  color: var(--color-primary-teal);
+  background-color: rgba(0, 181, 106, 0.05);
+}
+
+/* Legacy — tidak digunakan tapi jaga agar tidak error */
+.photoGrid { display: none; }
+.photoIcon { font-size: 26px; }
+
+
+.removePhotoBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  z-index: 10;
+}
+
+.removePhotoBtn:hover {
+  background-color: #e53e3e;
+}
+
+/* Map Location */
+.mapPlaceholder {
+  height: 200px;
+  border-radius: 10px;
+  margin-top: 12px;
+  border: 1px solid var(--color-border);
+  background-image: url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&q=80');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.mapOverlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+
+.mapBtn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background-color: var(--color-primary-dark);
+  color: white;
+  border: none;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mapBtn:hover {
+  background-color: var(--color-primary-teal);
+  transform: translateY(-2px);
+}
+
+/* Action Buttons */
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.submitButton {
+  flex: 1;
+  padding: 16px;
+  background-color: var(--color-primary-teal);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.3px;
+}
+
+.submitButton:hover {
+  background-color: #00a05e;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 181, 106, 0.25);
+}
+
+.draftButton {
+  padding: 16px 24px;
+  background-color: var(--color-white);
+  color: var(--color-primary-dark);
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.draftButton:hover {
+  border-color: var(--color-primary-dark);
+  background-color: var(--color-light-gray);
+}
+
+/* Tips box */
+.tips {
+  background: linear-gradient(135deg, rgba(0,181,106,0.08), rgba(58,119,255,0.08));
+  border: 1px solid rgba(0,181,106,0.2);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.tipsTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-primary-teal);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tipsList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tipsList li {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .main {
+    padding: 20px 0 80px;
+  }
+
+  .formCard {
+    padding: 20px 16px;
+    border-radius: 10px;
+  }
+
+  .pageTitle {
+    font-size: 22px;
+  }
+
+  .steps {
+    margin-bottom: 24px;
+  }
+
+  .stepLabel {
+    display: none;
+  }
+
+  /* Mobile: susun vertikal — foto utama di atas, thumbnail di bawah */
+  .photoArea {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .mainSlot {
+    flex: none;
+    width: 100%;
+    height: 180px;
+  }
+
+  .photoThumbs {
+    grid-template-columns: repeat(4, 1fr);
+    height: 80px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .draftButton {
+    order: 2;
+    padding: 14px;
+  }
+
+  .submitButton {
+    order: 1;
+    padding: 16px;
+  }
+}
