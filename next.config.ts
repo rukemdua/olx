@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
       }
     ],
   },
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: "https://alythsequnidggajizyq.supabase.co",
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_Of1SsS6rC-CzRTvhqiY_6g_Rdv7edw0"
+  },
 };
 
 export default nextConfig;
