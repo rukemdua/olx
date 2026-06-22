@@ -67,7 +67,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
 
     let shortLocation = ad.address || 'Indonesia';
     if (shortLocation.includes(',')) {
-      const parts = shortLocation.split(',').map(s => s.trim());
+      const parts = shortLocation.split(',').map((s: string) => s.trim());
       shortLocation = parts.length > 2 ? `${parts[parts.length - 2]}` : parts[parts.length - 1];
     }
 

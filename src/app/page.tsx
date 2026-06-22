@@ -54,7 +54,7 @@ export default async function Home() {
     // Ambil bagian alamat yang ringkas (misal 2 bagian terakhir jika koma)
     let shortLocation = ad.address || 'Indonesia';
     if (shortLocation.includes(',')) {
-      const parts = shortLocation.split(',').map(s => s.trim());
+      const parts = shortLocation.split(',').map((s: string) => s.trim());
       shortLocation = parts.length > 2 ? `${parts[parts.length - 2]}` : parts[parts.length - 1];
     }
 
