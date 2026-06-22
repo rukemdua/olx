@@ -1,0 +1,169 @@
+.galleryContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mainImageWrapper {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background-color: #000; /* Dark background like OLX */
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mainImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* Don't crop the image */
+  transition: opacity 0.3s ease;
+}
+
+.navButton {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(255, 255, 255, 0.7);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #002f34;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.navButton:hover {
+  background-color: rgba(255, 255, 255, 1);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.prevButton {
+  left: 16px;
+}
+
+.nextButton {
+  right: 16px;
+}
+
+.imageCounter {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
+}
+
+.thumbnailList {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+}
+
+.thumbnailList::-webkit-scrollbar {
+  height: 6px;
+}
+
+.thumbnailList::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
+
+.thumbnailWrapper {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  opacity: 0.6;
+}
+
+.thumbnailWrapper.active {
+  border-color: var(--color-primary-teal);
+  opacity: 1;
+}
+
+.thumbnailWrapper:hover:not(.active) {
+  opacity: 0.9;
+}
+
+.thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Pagination Dots - Mobile Only */
+.paginationDots {
+  display: none; /* Hidden on desktop */
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+  display: block;
+}
+
+.dotActive {
+  background-color: white;
+  width: 22px;
+  border-radius: 4px;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+  .navButton {
+    display: none; /* Hide arrows on mobile, use swipe instead */
+  }
+
+  .imageCounter {
+    display: none; /* Hide counter on mobile, dots are enough */
+  }
+
+  .paginationDots {
+    display: flex;
+  }
+
+  .thumbnailList {
+    display: none; /* Hide thumbnail strip on mobile, dots are used instead */
+  }
+
+  .thumbnailWrapper {
+    width: 64px;
+    height: 64px;
+  }
+}
+

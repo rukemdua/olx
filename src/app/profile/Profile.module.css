@@ -209,7 +209,237 @@
   transform: translateY(-2px);
 }
 
-/* Responsiveness */
+/* ===== Ad List (Iklan Saya) ===== */
+.adList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adListItem {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background-color: var(--color-white);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.adListItem:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+  border-color: #c8e6c9;
+}
+
+.adListThumb {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background-color: var(--color-light-gray);
+}
+
+.adListInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.adListTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adListPrice {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-primary-teal);
+  margin: 0 0 6px;
+}
+
+.adListMeta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0 0 8px;
+}
+
+.statusBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.statusActive {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.statusOff {
+  background-color: #f5f5f5;
+  color: #757575;
+}
+
+.adListActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.editAdBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  background-color: var(--color-primary-dark);
+  color: white;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 0.2s, transform 0.15s;
+  white-space: nowrap;
+}
+
+.editAdBtn:hover {
+  background-color: var(--color-primary-teal);
+  transform: translateY(-1px);
+}
+
+.deleteAdBtn {
+  padding: 8px 18px;
+  background-color: white;
+  color: #e53935;
+  border: 1px solid #ffcdd2;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.deleteAdBtn:hover {
+  background-color: #ffebee;
+  border-color: #e53935;
+}
+
+/* ===== Delete Confirmation Modal ===== */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  backdrop-filter: blur(3px);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal {
+  background-color: white;
+  border-radius: 16px;
+  padding: 36px 32px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.modalIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.modalTitle {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  margin-bottom: 10px;
+}
+
+.modalText {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.deleteError {
+  padding: 10px 14px;
+  background-color: #ffebee;
+  color: #c62828;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.modalActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.cancelBtn {
+  padding: 12px 28px;
+  background-color: white;
+  color: var(--color-primary-dark);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background-color: var(--color-light-gray);
+}
+
+.confirmDeleteBtn {
+  padding: 12px 28px;
+  background-color: #e53935;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.confirmDeleteBtn:hover:not(:disabled) {
+  background-color: #b71c1c;
+}
+
+.confirmDeleteBtn:disabled,
+.cancelBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ===== Responsiveness ===== */
 @media (max-width: 768px) {
   .main {
     padding: 20px 0 60px;
@@ -238,5 +468,27 @@
 
   .tabContent {
     padding: 16px;
+  }
+
+  .adListItem {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .adListThumb {
+    width: 72px;
+    height: 72px;
+  }
+
+  .adListActions {
+    flex-direction: row;
+    width: 100%;
+  }
+
+  .editAdBtn,
+  .deleteAdBtn {
+    flex: 1;
+    font-size: 12px;
+    padding: 8px 10px;
   }
 }

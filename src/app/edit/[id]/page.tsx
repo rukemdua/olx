@@ -27,8 +27,10 @@ export default function EditAdPage() {
   const [searchError, setSearchError] = useState('');
   const [coordInput, setCoordInput] = useState('');
   const [coordError, setCoordError] = useState('');
+  const [linkInput, setLinkInput] = useState('');
+  const [linkError, setLinkError] = useState('');
   const [parsedInfo, setParsedInfo] = useState<{lat: number, lng: number} | null>(null);
-  const [mapTab, setMapTab] = useState<'search' | 'coord'>('search');
+  const [mapTab, setMapTab] = useState<'search' | 'coord' | 'link'>('search');
   const [pinCoords, setPinCoords] = useState<[number, number] | null>(null);
 
   const handleSearchLocation = async () => {
@@ -95,7 +97,31 @@ export default function EditAdPage() {
     // This replaces any comma that is strictly between two numbers with a dot.
     raw = raw.replace(/(\d),(\d)/g, '$1.$2');
 
-    // --- Format 1: Google Maps URL containing @lat,lng,zoom or ?q=lat,lng ---
+    // --- Format 1: Google Maps Shortlink (maps.app.goo.gl or goo.gl/maps) ---
+    if (raw.includes('maps.app.goo.gl') || raw.includes('goo.gl/maps')) {
+      setCoordError('⏳ Sedang mengekstrak koordinat dari link...');
+      try {
+        const extractUrl = raw.match(/https?:\/\/[^\s]+/)?.[0] || raw;
+        const res = await fetch('/api/expand-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: extractUrl })
+        });
+        const data = await res.json();
+        if (data.expandedUrl) {
+          raw = data.expandedUrl; // Replace raw with the expanded URL
+          setCoordError('');
+        } else {
+          setCoordError('Gagal membaca link Google Maps. Pastikan link valid.');
+          return;
+        }
+      } catch (e) {
+        setCoordError('Terjadi kesalahan saat memproses link.');
+        return;
+      }
+    }
+
+    // --- Format 2: Google Maps URL containing @lat,lng,zoom or ?q=lat,lng ---
     const urlAtMatch = raw.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     const urlQMatch = raw.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     const mapsGooMatch = raw.match(/maps\.google\.[a-z]+\/\?.*?[?&ll=|@](-?\d+\.?\d*),(-?\d+\.?\d*)/);
@@ -156,6 +182,114 @@ export default function EditAdPage() {
     }
 
     // Show parsed info to user for verification
+    setParsedInfo({ lat, lng });
+    setPinCoords([lat, lng]);
+    setMapCenter([lat, lng]);
+    const coordStr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    setFormData(prev => ({ ...prev, location: coordStr }));
+    setAddress('⏳ Mengambil alamat...');
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`);
+      const data = await res.json();
+      if (data && data.address) {
+        const a = data.address;
+        const poi = a.amenity || a.building || a.shop || a.office || a.leisure || a.tourism || a.historic || a.mall || a.commercial;
+        const roadAndNum = [a.road || a.pedestrian || a.footway, a.house_number].filter(Boolean).join(' ');
+        
+        const parts = [
+          poi,
+          roadAndNum,
+          a.village || a.suburb || a.neighbourhood,
+          a.county || a.city_district,
+          a.city || a.town || a.municipality,
+          a.state,
+          a.postcode
+        ].filter(Boolean);
+        
+        const uniqueParts = parts.filter((item, pos) => parts.indexOf(item) === pos);
+        let finalAddress = uniqueParts.join(', ');
+        finalAddress = finalAddress.replace(/Jalan /gi, 'Jl. ');
+        
+        setAddress(finalAddress || data?.display_name || 'Alamat tidak ditemukan');
+      } else {
+        setAddress(data?.display_name || 'Alamat tidak ditemukan');
+      }
+    } catch {
+      setAddress('Gagal mengambil alamat');
+    }
+  };
+
+  const handleLinkInput = async () => {
+    setLinkError('');
+    setParsedInfo(null);
+    setPinCoords(null);
+    let raw = linkInput.trim();
+    if (!raw) { setLinkError('Masukkan link Google Maps terlebih dahulu.'); return; }
+
+    let extractUrl = raw.match(/https?:\/\/[^\s]+/)?.[0] || raw;
+    let finalUrl = extractUrl;
+
+    // Jika itu shortlink, expand dulu
+    if (extractUrl.includes('maps.app.goo.gl') || extractUrl.includes('goo.gl/maps')) {
+      setLinkError('⏳ Sedang mengekstrak koordinat dari link...');
+      try {
+        const res = await fetch('/api/expand-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: extractUrl })
+        });
+        const data = await res.json();
+        if (data.expandedUrl) {
+          finalUrl = data.expandedUrl;
+          setLinkError('');
+        } else {
+          setLinkError('Gagal membaca link Google Maps. Pastikan link valid.');
+          return;
+        }
+      } catch (e) {
+        setLinkError('Terjadi kesalahan saat memproses link.');
+        return;
+      }
+    }
+
+    // Parse URL yang sudah terekspansi (atau seluruh HTML body jika redirect gagal)
+    let lat: number | null = null;
+    let lng: number | null = null;
+
+    const urlAtMatch = finalUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const urlQMatch = finalUrl.match(/[?&amp;]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const urlLlMatch = finalUrl.match(/[?&amp;]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const centerMatch = finalUrl.match(/center=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const searchMatch = finalUrl.match(/search\/(-?\d+\.?\d*)[,](?:%20|\+|\s)*(-?\d+\.?\d*)/);
+
+    if (urlAtMatch) {
+      lat = parseFloat(urlAtMatch[1]);
+      lng = parseFloat(urlAtMatch[2]);
+    } else if (urlQMatch) {
+      lat = parseFloat(urlQMatch[1]);
+      lng = parseFloat(urlQMatch[2]);
+    } else if (urlLlMatch) {
+      lat = parseFloat(urlLlMatch[1]);
+      lng = parseFloat(urlLlMatch[2]);
+    } else if (centerMatch) {
+      lat = parseFloat(centerMatch[1]);
+      lng = parseFloat(centerMatch[2]);
+    } else if (searchMatch) {
+      lat = parseFloat(searchMatch[1]);
+      lng = parseFloat(searchMatch[2]);
+    }
+
+    if (lat === null || lng === null || isNaN(lat) || isNaN(lng)) {
+      setLinkError(`Tidak dapat menemukan koordinat dari link tersebut.`);
+      return;
+    }
+
+    // Final validation
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      setLinkError(`Titik koordinat tidak valid.`);
+      return;
+    }
+
     setParsedInfo({ lat, lng });
     setPinCoords([lat, lng]);
     setMapCenter([lat, lng]);
@@ -339,13 +473,19 @@ export default function EditAdPage() {
                 onClick={() => setMapTab('search')}
                 style={{ flex: 1, padding: '9px 0', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer', backgroundColor: mapTab === 'search' ? 'var(--color-primary-teal)' : 'white', color: mapTab === 'search' ? 'white' : 'var(--color-text-muted)', transition: 'all 0.2s' }}
               >
-                🔍 Cari Nama Lokasi
+                🔍 Nama
               </button>
               <button
                 onClick={() => setMapTab('coord')}
                 style={{ flex: 1, padding: '9px 0', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer', backgroundColor: mapTab === 'coord' ? 'var(--color-primary-teal)' : 'white', color: mapTab === 'coord' ? 'white' : 'var(--color-text-muted)', transition: 'all 0.2s', borderLeft: '1px solid var(--color-border)' }}
               >
-                📌 Masukkan Koordinat
+                📌 Koordinat
+              </button>
+              <button
+                onClick={() => setMapTab('link')}
+                style={{ flex: 1, padding: '9px 0', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer', backgroundColor: mapTab === 'link' ? 'var(--color-primary-teal)' : 'white', color: mapTab === 'link' ? 'white' : 'var(--color-text-muted)', transition: 'all 0.2s', borderLeft: '1px solid var(--color-border)' }}
+              >
+                🔗 Link Maps
               </button>
             </div>
 
@@ -408,16 +548,14 @@ export default function EditAdPage() {
             {mapTab === 'coord' && (
               <div style={{ marginBottom: '12px' }}>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '8px', lineHeight: '1.5', padding: '8px 10px', backgroundColor: '#fff8e1', borderRadius: '6px', borderLeft: '3px solid #fbc02d' }}>
-                  💡 <strong>Cara mendapatkan koordinat dari Google Maps:</strong><br/>
-                  Klik kanan pada titik di Google Maps → Klik angka koordinat yang muncul → Paste di sini.<br/>
-                  Anda juga bisa paste link Google Maps lengkap.
+                  💡 <strong>Format:</strong> -6.200000, 106.816666
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input 
                     type="text" 
                     className={styles.input} 
                     style={{ flex: 1, margin: 0, fontFamily: 'monospace' }}
-                    placeholder="Contoh: -6.200000, 106.816666"
+                    placeholder="-6.200000, 106.816666"
                     value={coordInput}
                     onChange={(e) => { setCoordInput(e.target.value); setCoordError(''); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCoordInput(); } }}
@@ -437,6 +575,42 @@ export default function EditAdPage() {
                 {parsedInfo && !coordError && (
                   <div style={{ color: 'var(--color-primary-teal)', fontSize: '12px', marginTop: '6px', padding: '0 4px', fontWeight: 600 }}>
                     ✓ Berhasil membaca: Lat {parsedInfo.lat.toFixed(6)}, Lng {parsedInfo.lng.toFixed(6)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab: Input Link Maps */}
+            {mapTab === 'link' && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '8px', lineHeight: '1.5', padding: '8px 10px', backgroundColor: '#fff8e1', borderRadius: '6px', borderLeft: '3px solid #fbc02d' }}>
+                  💡 <strong>Cara:</strong> Buka Google Maps → Pilih Lokasi → Klik Bagikan / Share → Salin Tautan → Paste di sini.
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input 
+                    type="text" 
+                    className={styles.input} 
+                    style={{ flex: 1, margin: 0 }}
+                    placeholder="https://maps.app.goo.gl/..."
+                    value={linkInput}
+                    onChange={(e) => { setLinkInput(e.target.value); setLinkError(''); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLinkInput(); } }}
+                  />
+                  <button 
+                    onClick={(e) => { e.preventDefault(); handleLinkInput(); }}
+                    style={{ padding: '0 20px', backgroundColor: '#1a73e8', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    🔗 Ekstrak
+                  </button>
+                </div>
+                {linkError && (
+                  <div style={{ color: '#d9534f', fontSize: '13px', marginTop: '6px', padding: '0 4px' }}>
+                    ⚠️ {linkError}
+                  </div>
+                )}
+                {parsedInfo && !linkError && (
+                  <div style={{ color: 'var(--color-primary-teal)', fontSize: '12px', marginTop: '6px', padding: '0 4px', fontWeight: 600 }}>
+                    ✓ Berhasil mengekstrak lokasi
                   </div>
                 )}
               </div>

@@ -16,16 +16,16 @@ Dokumen ini menguraikan fase-fase pembangunan platform marketplace (C2C & B2C) b
 - [ ] Integrasi layanan Cloud Storage untuk kompresi dan manajemen file gambar/video (Mendukung hingga 20 gambar/iklan).
 
 ## Fase 3: Pengembangan Core Frontend (Minggu 5-6)
-- [ ] Implementasi layout dasar aplikasi (Navbar, Footer, Sidebar).
-- [ ] Integrasi flow Autentikasi (Halaman Login, Register, Lupa Password, OTP).
-- [ ] Halaman Profil Pengguna dan Dashboard Manajemen Iklan.
-- [ ] Halaman Pemasangan Iklan (Form spesifik kategori yang dinamis dan geo-tagging pintar).
+- [x] Implementasi layout dasar aplikasi (Navbar, Footer, Sidebar).
+- [x] Integrasi flow Autentikasi (Halaman Login, Register, Lupa Password, OTP).
+- [x] Halaman Profil Pengguna dan Dashboard Manajemen Iklan.
+- [x] Halaman Pemasangan Iklan (Form spesifik kategori yang dinamis dan geo-tagging pintar).
 
 ## Fase 4: Pencarian, Eksplorasi & Sistem Komunikasi (Minggu 7-8)
-- [ ] Implementasi sistem pencarian (Hyper-local search), filter, dan sorting.
-- [ ] Halaman Detail Iklan (Menampilkan informasi lengkap barang dan info penjual).
+- [x] Implementasi sistem pencarian (Hyper-local search), filter, dan sorting.
+- [x] Halaman Detail Iklan (Menampilkan informasi lengkap barang dan info penjual).
 - [ ] (Opsional) Integrasi Elasticsearch untuk pencarian pintar dan typo tolerance.
-- [ ] Fitur Chat In-App secara real-time (Mendukung smart replies, indikator status/read receipts).
+- [x] Fitur Chat In-App secara real-time (Mendukung smart replies, indikator status/read receipts).
 
 ## Fase 5: Monetisasi, Keamanan & Layanan Tambahan (Minggu 9-10)
 - [ ] Integrasi Payment Gateway untuk fitur layanan berbayar (Highlight / Sundul Iklan, Label Urgensi).

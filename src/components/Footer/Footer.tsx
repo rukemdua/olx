@@ -11,11 +11,11 @@ export default function Footer() {
           {/* Brand Column */}
           <div className={styles.brand}>
             <div className={styles.logoRow}>
-              <span className={styles.logoText}>OLX</span>
+              <span className={styles.logoText}>Toko Mantan</span>
               <span className={styles.logoDot}></span>
             </div>
             <p className={styles.brandDesc}>
-              Platform jual beli barang bekas terpercaya. Lebih dari 5 juta iklan aktif menunggu Anda.
+              Platform jual beli barang bekas penuh kenangan. Jutaan barang mantan menunggu untuk dibeli.
             </p>
             <div className={styles.socialIcons}>
               <a href="#" className={styles.socialIcon} aria-label="Facebook"><FaFacebook size={18} /></a>
@@ -46,7 +46,7 @@ export default function Footer() {
 
           <div className={styles.column}>
             <h3 className={styles.title}>Perusahaan</h3>
-            <Link href="/tentang">Tentang OLX</Link>
+            <Link href="/tentang">Tentang Toko Mantan</Link>
             <Link href="/karir">Karir</Link>
             <Link href="/kontak">Hubungi Kami</Link>
             <Link href="/blog">Blog</Link>
@@ -66,7 +66,7 @@ export default function Footer() {
 
       <div className={styles.bottomBar}>
         <div className={styles.bottomContainer}>
-          <span className={styles.copyright}>© 2026 OLX Clone Indonesia. Hak Cipta Dilindungi.</span>
+          <span className={styles.copyright}>© 2026 Toko Mantan Indonesia. Hak Cipta Dilindungi.</span>
           <div className={styles.bottomLinks}>
             <Link href="/kebijakan-privasi">Kebijakan Privasi</Link>
             <Link href="/syarat-ketentuan">Syarat & Ketentuan</Link>

@@ -217,5 +217,25 @@
 @media (max-width: 768px) {
   .container {
     grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
   }
+
+  /* Trick: display:contents membuat leftCol dan rightCol
+     "transparan" secara layout, sehingga anak-anaknya
+     langsung bisa diurutkan dengan order di container */
+  .leftCol {
+    display: contents;
+  }
+
+  .rightCol {
+    display: contents;
+  }
+
+  /* Urutan baru di mobile: Gallery (1) > Price (2) > Deskripsi/Map (3) > Seller (4) > Safety (5) */
+  .galleryCard  { order: 1; }
+  .priceCard    { order: 2; }
+  .detailsCard  { order: 3; }
+  .sellerCard   { order: 4; }
+  .safetyCard   { order: 5; }
 }

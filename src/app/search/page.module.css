@@ -1,13 +1,13 @@
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: 32px 16px;
   display: flex;
-  gap: 2rem;
+  gap: 32px;
 }
 
 .sidebar {
-  width: 250px;
+  width: 280px;
   flex-shrink: 0;
 }
 
@@ -16,114 +16,185 @@
 }
 
 .searchHeader {
-  margin-bottom: 2rem;
+  margin-bottom: 24px;
 }
 
 .searchTitle {
-  font-size: 1.5rem;
+  font-size: 24px;
   font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  color: var(--color-primary-dark);
+  margin-bottom: 8px;
 }
 
 .searchCount {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+  font-size: 14px;
+  color: var(--color-text-muted);
 }
 
 /* Filter Styles */
+.mobileFilterToggle {
+  display: none;
+  width: 100%;
+  padding: 14px 16px;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  transition: background-color 0.2s;
+}
+
+.mobileFilterToggle:active {
+  background-color: var(--color-light-gray);
+}
+
 .filterBox {
-  background-color: var(--background-primary);
-  border: 1px solid var(--border-color);
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 24px;
   position: sticky;
   top: 100px;
 }
 
+.filterHeaderDesktop {
+  display: block;
+}
+
 .filterTitle {
-  font-size: 1.125rem;
+  font-size: 18px;
   font-weight: 700;
-  margin-bottom: 1.5rem;
-  color: var(--text-primary);
+  margin-bottom: 24px;
+  color: var(--color-primary-dark);
 }
 
 .filterGroup {
-  margin-bottom: 1.5rem;
+  margin-bottom: 24px;
 }
 
 .filterLabel {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  margin-bottom: 10px;
   display: block;
 }
 
 .filterInput {
   width: 100%;
-  padding: 0.5rem;
-  border: 1px solid var(--border-color);
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   outline: none;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.filterInput:focus {
+  border-color: var(--color-primary-teal);
 }
 
 .priceRange {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .priceInput {
   width: 100%;
-  padding: 0.5rem;
-  border: 1px solid var(--border-color);
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  font-size: 0.875rem;
+  font-size: 14px;
   outline: none;
+}
+
+.priceInput:focus {
+  border-color: var(--color-primary-teal);
 }
 
 .filterCheck {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--color-text-main);
   cursor: pointer;
 }
 
 .applyBtn {
   width: 100%;
-  padding: 0.75rem;
-  background-color: var(--primary-color);
+  padding: 12px;
+  background-color: var(--color-primary-dark);
   color: white;
   border: none;
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .applyBtn:hover {
-  background-color: var(--primary-dark);
+  background-color: var(--color-primary-teal);
+}
+
+.applyBtn:active {
+  transform: scale(0.98);
 }
 
 .productGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1.5rem;
+  gap: 16px;
 }
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .container {
     flex-direction: column;
+    padding: 16px;
+    gap: 16px;
   }
+  
   .sidebar {
     width: 100%;
   }
+
+  .mobileFilterToggle {
+    display: flex;
+  }
+
   .filterBox {
     position: static;
+    display: none;
+    padding: 16px;
+    border-radius: 0 0 8px 8px;
+    border-top: none;
+    margin-top: -16px;
   }
+
+  .filterBoxOpen {
+    display: block;
+    animation: slideDown 0.3s ease;
+  }
+
+  .filterHeaderDesktop {
+    display: none; /* Hide 'Filter Pencarian' text inside the box on mobile because the toggle button already says it */
+  }
+
+  .productGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

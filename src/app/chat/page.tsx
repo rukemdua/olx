@@ -1,112 +1,145 @@
-"use client";
+import { redirect } from 'next/navigation';
+import { createClient } from '@/utils/supabase/server';
+import ChatClient from './ChatClient';
 
-import { useState } from 'react';
-import styles from './page.module.css';
-import Image from 'next/image';
-import { Paperclip, MoreVertical, ArrowLeft } from 'lucide-react';
+export const dynamic = 'force-dynamic';
 
-export default function ChatPage() {
-  const [activeChat, setActiveChat] = useState(1);
-  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
+export default async function ChatPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const resolvedParams = await searchParams;
+  const initialRoom = typeof resolvedParams.room === 'string' ? resolvedParams.room : undefined;
 
-  const chats = [
-    { id: 1, name: 'Budi Santoso', item: 'Honda Brio E Satya 2020', preview: 'Bisa nego gak gan?', time: '10:30', unread: 2 },
-    { id: 2, name: 'Siti Aminah', item: 'iPhone 13 Pro Max', preview: 'Lokasi COD dimana ya?', time: 'Kemarin', unread: 0 },
-    { id: 3, name: 'Toko Elektronik Jaya', item: 'TV Samsung 43 Inch', preview: 'Barang masih ready kak, silakan diorder.', time: '2 Hari lalu', unread: 0 },
-  ];
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  // Fetch semua chat room milik user ini
+  const { data: rooms, error } = await supabase
+    .from('chat_rooms')
+    .select(`
+      id,
+      buyer_id,
+      seller_id,
+      ad_id,
+      created_at
+    `)
+    .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error("Gagal mengambil chat rooms:", error);
+  }
+
+  const chatRooms = rooms || [];
+
+  if (chatRooms.length === 0) {
+    return (
+      <ChatClient
+        chats={[]}
+        currentUserId={user.id}
+        initialRoomId={initialRoom}
+      />
+    );
+  }
+
+  const roomIds = chatRooms.map(r => r.id);
+  const adIds = [...new Set(chatRooms.map(r => r.ad_id))];
+  const profileIds = [...new Set(chatRooms.flatMap(r => [r.buyer_id, r.seller_id]))];
+
+  const { data: adsData } = await supabase
+    .from('ads')
+    .select('id, title, price, ad_images(url)')
+    .in('id', adIds);
+
+  const { data: profilesData } = await supabase
+    .from('profiles')
+    .select('id, full_name, avatar_url')
+    .in('id', profileIds);
+
+  // Fetch unread count — pesan dari orang lain yang belum dibaca
+  const { data: unreadMessages } = await supabase
+    .from('messages')
+    .select('room_id')
+    .in('room_id', roomIds)
+    .eq('is_read', false)
+    .neq('sender_id', user.id);
+
+  // Fetch pesan terakhir per room untuk preview sidebar
+  const { data: lastMessages } = await supabase
+    .from('messages')
+    .select('room_id, content, created_at, sender_id')
+    .in('room_id', roomIds)
+    .order('created_at', { ascending: false });
+
+  // Ambil pesan terakhir per room (karena sudah diurut desc, cukup ambil pertama per room)
+  const lastMessageMap = new Map<string, { content: string; created_at: string; sender_id: string; is_read: boolean }>();
+  if (lastMessages) {
+    for (const msg of lastMessages) {
+      if (!lastMessageMap.has(msg.room_id)) {
+        lastMessageMap.set(msg.room_id, {
+          content: msg.content,
+          created_at: msg.created_at,
+          sender_id: msg.sender_id,
+          is_read: msg.is_read,
+        });
+      }
+    }
+  }
+
+  const unreadCountMap = new Map<string, number>();
+  if (unreadMessages) {
+    unreadMessages.forEach(msg => {
+      unreadCountMap.set(msg.room_id, (unreadCountMap.get(msg.room_id) || 0) + 1);
+    });
+  }
+
+  const adsMap = new Map((adsData || []).map(ad => [ad.id, ad]));
+  const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
+
+  // Susun data chat untuk dikirim ke Client
+  const formattedChats = chatRooms.map(room => {
+    const isBuyer = room.buyer_id === user.id;
+    const otherUserId = isBuyer ? room.seller_id : room.buyer_id;
+
+    const ad = adsMap.get(room.ad_id);
+    const otherUser = profilesMap.get(otherUserId);
+    const lastMsg = lastMessageMap.get(room.id);
+
+    const firstImage = ad?.ad_images?.[0]?.url || 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?w=100&q=80';
+
+    return {
+      id: room.id,
+      ad_id: room.ad_id,
+      ad_title: ad?.title || 'Barang tidak ditemukan',
+      ad_price: ad?.price || 0,
+      ad_image: firstImage,
+      other_user_id: otherUserId,
+      other_user_name: otherUser?.full_name || 'Pengguna',
+      other_user_avatar: otherUser?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(otherUser?.full_name || 'U')}&background=00b56a&color=fff`,
+      unread_count: unreadCountMap.get(room.id) || 0,
+      last_message: lastMsg?.content || null,
+      last_message_at: lastMsg?.created_at || room.created_at,
+      last_message_is_mine: lastMsg?.sender_id === user.id,
+      last_message_is_read: lastMsg?.is_read || false,
+    };
+  });
+
+  // Sort by last message time (terbaru di atas)
+  formattedChats.sort((a, b) =>
+    new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+  );
 
   return (
-    <div className={styles.pageWrapper}>
-      <div className={styles.container}>
-        {/* Sidebar List Chat */}
-      <div className={`${styles.sidebar} ${mobileView === 'chat' ? styles.hideOnMobile : ''}`}>
-        <div className={styles.sidebarHeader}>
-          <h1 className={styles.sidebarTitle}>Pesan</h1>
-        </div>
-        <div className={styles.chatList}>
-          {chats.map(chat => (
-            <div 
-              key={chat.id} 
-              className={`${styles.chatItem} ${activeChat === chat.id ? styles.active : ''}`}
-              onClick={() => {
-                setActiveChat(chat.id);
-                setMobileView('chat');
-              }}
-            >
-              <div className={styles.avatar}>{chat.name.charAt(0)}</div>
-              <div className={styles.chatInfo}>
-                <div className={styles.chatName}>{chat.name}</div>
-                <div className={styles.chatPreview}>{chat.preview}</div>
-              </div>
-              <div className={styles.chatMeta}>
-                <div className={styles.chatTime}>{chat.time}</div>
-                {chat.unread > 0 && <div className={styles.unreadBadge}>{chat.unread}</div>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Chat Window */}
-      <div className={`${styles.chatWindow} ${mobileView === 'list' ? styles.hideOnMobile : ''}`}>
-        <div className={styles.chatHeader}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <button className={styles.backBtn} onClick={() => setMobileView('list')}>
-              <ArrowLeft size={24} />
-            </button>
-            <div>
-              <div className={styles.headerProfile}>
-                <div className={styles.avatar}>B</div>
-                <div>
-                  <div className={styles.chatName}>Budi Santoso</div>
-                  <div className={styles.chatTime}>Online</div>
-                </div>
-              </div>
-              <div className={styles.itemInfo}>
-                <Image src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=100&q=80" alt="Item" width={40} height={40} className={styles.itemImage}/>
-                <div>
-                  <div className={styles.itemTitle}>Honda Brio E Satya 2020</div>
-                  <div className={styles.itemPrice}>Rp 145.000.000</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <button className={styles.attachBtn} title="Opsi lainnya">
-            <MoreVertical size={20} />
-          </button>
-        </div>
-
-        <div className={styles.chatBody}>
-          <div className={`${styles.message} ${styles.received}`}>
-            Halo gan, barangnya masih ada?
-            <span className={styles.messageTime}>10:28</span>
-          </div>
-          <div className={`${styles.message} ${styles.sent}`}>
-            Halo Budi, iya masih ada nih. Mau liat-liat dulu?
-            <span className={styles.messageTime}>10:29</span>
-          </div>
-          <div className={`${styles.message} ${styles.received}`}>
-            Bisa nego gak gan?
-            <span className={styles.messageTime}>10:30</span>
-          </div>
-        </div>
-
-        <div className={styles.chatFooter}>
-          <button className={styles.attachBtn} title="Kirim Gambar">
-            <Paperclip size={20} />
-          </button>
-          <div className={styles.inputWrapper}>
-            <input type="text" className={styles.messageInput} placeholder="Ketik pesan di sini..." />
-          </div>
-          <button className={styles.sendBtn} title="Kirim Pesan">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '-2px' }}>
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
-          </button>
-        </div>
-      </div>
-      </div>
-    </div>
+    <ChatClient
+      chats={formattedChats}
+      currentUserId={user.id}
+      initialRoomId={initialRoom}
+    />
   );
 }

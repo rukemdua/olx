@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import styles from './Jual.module.css';
 import { ImageIcon, Tag, X, Camera } from 'lucide-react';
 import MapPicker from '@/components/MapPicker';
+import { createClient } from '@/utils/supabase/client';
 
 const MAX_PHOTOS = 5;
 
@@ -17,7 +19,21 @@ export default function PasangIklanPage() {
     location: '',
   });
   const [photos, setPhotos] = useState<string[]>([]);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const supabase = createClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+  }, [supabase]);
+
   const [activeSlot, setActiveSlot] = useState<number>(0);
   const [mapCenter, setMapCenter] = useState<[number, number]>([-6.200000, 106.816666]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,8 +43,10 @@ export default function PasangIklanPage() {
   const [searchError, setSearchError] = useState('');
   const [coordInput, setCoordInput] = useState('');
   const [coordError, setCoordError] = useState('');
+  const [linkInput, setLinkInput] = useState('');
+  const [linkError, setLinkError] = useState('');
   const [parsedInfo, setParsedInfo] = useState<{lat: number, lng: number} | null>(null);
-  const [mapTab, setMapTab] = useState<'search' | 'coord'>('search');
+  const [mapTab, setMapTab] = useState<'search' | 'coord' | 'link'>('search');
   const [pinCoords, setPinCoords] = useState<[number, number] | null>(null);
 
   const handleSearchLocation = async () => {
@@ -198,24 +216,212 @@ export default function PasangIklanPage() {
     }
   };
 
+  const handleLinkInput = async () => {
+    setLinkError('');
+    setParsedInfo(null);
+    setPinCoords(null);
+    let raw = linkInput.trim();
+    if (!raw) { setLinkError('Masukkan link Google Maps terlebih dahulu.'); return; }
+
+    let extractUrl = raw.match(/https?:\/\/[^\s]+/)?.[0] || raw;
+    let finalUrl = extractUrl;
+
+    // Jika itu shortlink, expand dulu
+    if (extractUrl.includes('maps.app.goo.gl') || extractUrl.includes('goo.gl/maps')) {
+      setLinkError('⏳ Sedang mengekstrak koordinat dari link...');
+      try {
+        const res = await fetch('/api/expand-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: extractUrl })
+        });
+        const data = await res.json();
+        if (data.expandedUrl) {
+          finalUrl = data.expandedUrl;
+          setLinkError('');
+        } else {
+          setLinkError('Gagal membaca link Google Maps. Pastikan link valid.');
+          return;
+        }
+      } catch (e) {
+        setLinkError('Terjadi kesalahan saat memproses link.');
+        return;
+      }
+    }
+
+    // Parse URL yang sudah terekspansi (atau seluruh HTML body jika redirect gagal)
+    let lat: number | null = null;
+    let lng: number | null = null;
+
+    const urlAtMatch = finalUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const urlQMatch = finalUrl.match(/[?&amp;]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const urlLlMatch = finalUrl.match(/[?&amp;]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const centerMatch = finalUrl.match(/center=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    const searchMatch = finalUrl.match(/search\/(-?\d+\.?\d*)[,](?:%20|\+|\s)*(-?\d+\.?\d*)/);
+
+    if (urlAtMatch) {
+      lat = parseFloat(urlAtMatch[1]);
+      lng = parseFloat(urlAtMatch[2]);
+    } else if (urlQMatch) {
+      lat = parseFloat(urlQMatch[1]);
+      lng = parseFloat(urlQMatch[2]);
+    } else if (urlLlMatch) {
+      lat = parseFloat(urlLlMatch[1]);
+      lng = parseFloat(urlLlMatch[2]);
+    } else if (centerMatch) {
+      lat = parseFloat(centerMatch[1]);
+      lng = parseFloat(centerMatch[2]);
+    } else if (searchMatch) {
+      lat = parseFloat(searchMatch[1]);
+      lng = parseFloat(searchMatch[2]);
+    }
+
+    if (lat === null || lng === null || isNaN(lat) || isNaN(lng)) {
+      setLinkError(`Tidak dapat menemukan koordinat dari link tersebut.`);
+      return;
+    }
+
+    // Final validation
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      setLinkError(`Titik koordinat tidak valid.`);
+      return;
+    }
+
+    setParsedInfo({ lat, lng });
+    setPinCoords([lat, lng]);
+    setMapCenter([lat, lng]);
+    const coordStr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    setFormData(prev => ({ ...prev, location: coordStr }));
+    setAddress('⏳ Mengambil alamat...');
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`);
+      const data = await res.json();
+      if (data && data.address) {
+        const a = data.address;
+        const poi = a.amenity || a.building || a.shop || a.office || a.leisure || a.tourism || a.historic || a.mall || a.commercial;
+        const roadAndNum = [a.road || a.pedestrian || a.footway, a.house_number].filter(Boolean).join(' ');
+        
+        const parts = [
+          poi,
+          roadAndNum,
+          a.village || a.suburb || a.neighbourhood,
+          a.county || a.city_district,
+          a.city || a.town || a.municipality,
+          a.state,
+          a.postcode
+        ].filter(Boolean);
+        
+        const uniqueParts = parts.filter((item, pos) => parts.indexOf(item) === pos);
+        let finalAddress = uniqueParts.join(', ');
+        finalAddress = finalAddress.replace(/Jalan /gi, 'Jl. ');
+        
+        setAddress(finalAddress || data?.display_name || 'Alamat tidak ditemukan');
+      } else {
+        setAddress(data?.display_name || 'Alamat tidak ditemukan');
+      }
+    } catch {
+      setAddress('Gagal mengambil alamat');
+    }
+  };
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const newPreviews = files.map(f => URL.createObjectURL(f));
-    setPhotos(prev => {
-      const combined = [...prev, ...newPreviews];
-      return combined.slice(0, MAX_PHOTOS);
-    });
+    
+    setPhotos(prev => [...prev, ...newPreviews].slice(0, MAX_PHOTOS));
+    setPhotoFiles(prev => [...prev, ...files].slice(0, MAX_PHOTOS));
+    
     // Reset input so same file can be re-selected
     e.target.value = '';
   };
 
   const removePhoto = (index: number) => {
     setPhotos(prev => prev.filter((_, i) => i !== index));
+    setPhotoFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const openFilePicker = (slotIndex: number) => {
     setActiveSlot(slotIndex);
     fileInputRef.current?.click();
+  };
+
+  const handleSubmit = async () => {
+    if (!user) {
+      setSubmitError('Anda harus login terlebih dahulu.');
+      return;
+    }
+    if (!formData.title || !formData.price || !formData.description) {
+      setSubmitError('Harap isi Judul, Harga, dan Deskripsi.');
+      return;
+    }
+    if (!formData.location || !parsedInfo) {
+      setSubmitError('Harap pilih lokasi barang Anda.');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    try {
+      // 1. Insert Ad to get ID
+      const { data: adData, error: adError } = await supabase
+        .from('ads')
+        .insert({
+          user_id: user.id,
+          title: formData.title,
+          description: formData.description,
+          price: parseInt(formData.price.replace(/\D/g, '') || '0'),
+          category: formData.category,
+          condition: formData.condition,
+          location: formData.location, // e.g. "-6.20,106.81"
+          latitude: parsedInfo.lat,
+          longitude: parsedInfo.lng,
+          address: address !== '⏳ Mengambil alamat...' ? address : null,
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (adError) throw new Error(adError.message);
+      
+      const adId = adData.id;
+
+      // 2. Upload Images
+      const imageUrls: string[] = [];
+      for (let i = 0; i < photoFiles.length; i++) {
+        const file = photoFiles[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${adId}/${Date.now()}-${i}.${fileExt}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('ad_images')
+          .upload(fileName, file);
+
+        if (uploadError) {
+          console.error('Error uploading image:', uploadError);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('ad_images')
+          .getPublicUrl(fileName);
+        
+        imageUrls.push(publicUrl);
+      }
+
+      // 3. Insert Image URLs
+      if (imageUrls.length > 0) {
+        const imageInserts = imageUrls.map(url => ({ ad_id: adId, url }));
+        await supabase.from('ad_images').insert(imageInserts);
+      }
+
+      // 4. Success -> Redirect
+      setShowSuccessModal(true);
+
+    } catch (err: any) {
+      setSubmitError(err.message || 'Terjadi kesalahan saat menyimpan iklan.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -414,13 +620,19 @@ export default function PasangIklanPage() {
                 onClick={() => setMapTab('search')}
                 style={{ flex: 1, padding: '9px 0', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer', backgroundColor: mapTab === 'search' ? 'var(--color-primary-teal)' : 'white', color: mapTab === 'search' ? 'white' : 'var(--color-text-muted)', transition: 'all 0.2s' }}
               >
-                🔍 Cari Nama Lokasi
+                🔍 Nama
               </button>
               <button
                 onClick={() => setMapTab('coord')}
                 style={{ flex: 1, padding: '9px 0', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer', backgroundColor: mapTab === 'coord' ? 'var(--color-primary-teal)' : 'white', color: mapTab === 'coord' ? 'white' : 'var(--color-text-muted)', transition: 'all 0.2s', borderLeft: '1px solid var(--color-border)' }}
               >
-                📌 Masukkan Koordinat
+                📌 Koordinat
+              </button>
+              <button
+                onClick={() => setMapTab('link')}
+                style={{ flex: 1, padding: '9px 0', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer', backgroundColor: mapTab === 'link' ? 'var(--color-primary-teal)' : 'white', color: mapTab === 'link' ? 'white' : 'var(--color-text-muted)', transition: 'all 0.2s', borderLeft: '1px solid var(--color-border)' }}
+              >
+                🔗 Link Maps
               </button>
             </div>
 
@@ -483,16 +695,14 @@ export default function PasangIklanPage() {
             {mapTab === 'coord' && (
               <div style={{ marginBottom: '12px' }}>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '8px', lineHeight: '1.5', padding: '8px 10px', backgroundColor: '#fff8e1', borderRadius: '6px', borderLeft: '3px solid #fbc02d' }}>
-                  💡 <strong>Cara mendapatkan koordinat dari Google Maps:</strong><br/>
-                  Klik kanan pada titik di Google Maps → Klik angka koordinat yang muncul → Paste di sini.<br/>
-                  Anda juga bisa paste link Google Maps lengkap.
+                  💡 <strong>Format:</strong> -6.200000, 106.816666
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input 
                     type="text" 
                     className={styles.input} 
                     style={{ flex: 1, margin: 0, fontFamily: 'monospace' }}
-                    placeholder="Contoh: -6.200000, 106.816666"
+                    placeholder="-6.200000, 106.816666"
                     value={coordInput}
                     onChange={(e) => { setCoordInput(e.target.value); setCoordError(''); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCoordInput(); } }}
@@ -517,11 +727,48 @@ export default function PasangIklanPage() {
               </div>
             )}
 
+            {/* Tab: Input Link Maps */}
+            {mapTab === 'link' && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '8px', lineHeight: '1.5', padding: '8px 10px', backgroundColor: '#fff8e1', borderRadius: '6px', borderLeft: '3px solid #fbc02d' }}>
+                  💡 <strong>Cara:</strong> Buka Google Maps → Pilih Lokasi → Klik Bagikan / Share → Salin Tautan → Paste di sini.
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input 
+                    type="text" 
+                    className={styles.input} 
+                    style={{ flex: 1, margin: 0 }}
+                    placeholder="https://maps.app.goo.gl/..."
+                    value={linkInput}
+                    onChange={(e) => { setLinkInput(e.target.value); setLinkError(''); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLinkInput(); } }}
+                  />
+                  <button 
+                    onClick={(e) => { e.preventDefault(); handleLinkInput(); }}
+                    style={{ padding: '0 20px', backgroundColor: '#1a73e8', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    🔗 Ekstrak
+                  </button>
+                </div>
+                {linkError && (
+                  <div style={{ color: '#d9534f', fontSize: '13px', marginTop: '6px', padding: '0 4px' }}>
+                    ⚠️ {linkError}
+                  </div>
+                )}
+                {parsedInfo && !linkError && (
+                  <div style={{ color: 'var(--color-primary-teal)', fontSize: '12px', marginTop: '6px', padding: '0 4px', fontWeight: 600 }}>
+                    ✓ Berhasil mengekstrak lokasi
+                  </div>
+                )}
+              </div>
+            )}
+
             <MapPicker 
               centerPoint={mapCenter}
               externalPin={pinCoords}
               onLocationSelect={async (lat, lng) => {
                 setPinCoords(null); // reset external pin when user clicks map
+                setParsedInfo({ lat, lng }); // Menyimpan lat lng untuk keperluan insert database
                 const coordStr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
                 setFormData(prev => ({ ...prev, location: coordStr }));
                 setAddress('⏳ Mengambil alamat...');
@@ -592,16 +839,49 @@ export default function PasangIklanPage() {
         </div>
 
         {/* Actions */}
+        {submitError && (
+          <div style={{ color: '#d9534f', backgroundColor: '#fdf3f2', padding: '12px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #f5c2c7' }}>
+            ⚠️ {submitError}
+          </div>
+        )}
         <div className={styles.actions}>
-          <button className={styles.draftButton}>Simpan Draft</button>
-          <button className={styles.submitButton}>
+          <button className={styles.draftButton} disabled={isSubmitting}>Simpan Draft</button>
+          <button className={styles.submitButton} onClick={handleSubmit} disabled={isSubmitting}>
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              Tayangkan Iklan Sekarang
+              {isSubmitting ? '⏳ Menayangkan...' : 'Tayangkan Iklan Sekarang'}
             </span>
           </button>
         </div>
 
       </div>
+
+      {/* SUCCESS MODAL */}
+      {showSuccessModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalIcon}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+            <h2 className={styles.modalTitle}>Iklan Berhasil Ditayangkan!</h2>
+            <p className={styles.modalText}>
+              Bagus sekali! Iklan Anda sekarang sudah aktif dan dapat dilihat oleh ribuan pembeli potensial di seluruh Indonesia.
+            </p>
+            <button 
+              className={styles.modalButton}
+              onClick={() => {
+                router.push('/');
+                router.refresh();
+              }}
+            >
+              Kembali ke Beranda
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
