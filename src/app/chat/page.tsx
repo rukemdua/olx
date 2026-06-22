@@ -73,7 +73,7 @@ export default async function ChatPage({
   // Fetch pesan terakhir per room untuk preview sidebar
   const { data: lastMessages } = await supabase
     .from('messages')
-    .select('room_id, content, created_at, sender_id')
+    .select('room_id, content, created_at, sender_id, is_read')
     .in('room_id', roomIds)
     .order('created_at', { ascending: false });
 

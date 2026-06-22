@@ -6,7 +6,9 @@ import Link from 'next/link';
 import styles from '@/components/Auth/Auth.module.css';
 import { createClient } from '@/utils/supabase/client';
 
-export default function LoginPage() {
+import { Suspense } from 'react';
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
@@ -88,5 +90,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ textAlign: 'center', padding: '100px' }}>Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
