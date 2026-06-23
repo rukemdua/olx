@@ -47,3 +47,36 @@ export async function deleteAdImageAction(url: string, adId: string) {
     return { success: false, error: err.message };
   }
 }
+
+export async function reorderAdImagesAction(adId: string, orderedUrls: string[]) {
+  try {
+    // 1. Cek Autentikasi
+    const serverClient = await createServerClient();
+    const { data: { user } } = await serverClient.auth.getUser();
+    if (!user) throw new Error('Harap login terlebih dahulu');
+
+    // 2. Verifikasi
+    const { data: ad } = await serverClient.from('ads').select('user_id').eq('id', adId).single();
+    if (!ad || ad.user_id !== user.id) throw new Error('Akses ditolak');
+
+    const adminClient = process.env.SUPABASE_SERVICE_ROLE_KEY 
+      ? createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY)
+      : serverClient;
+
+    // 3. Hapus semua record ad_images di DB untuk iklan ini (TIDAK MENGHAPUS FILE STORAGE)
+    const { error: delErr } = await adminClient.from('ad_images').delete().eq('ad_id', adId);
+    if (delErr) throw delErr;
+
+    // 4. Insert kembali dengan urutan yang benar
+    if (orderedUrls.length > 0) {
+      const inserts = orderedUrls.map(url => ({ ad_id: adId, url }));
+      const { error: insErr } = await adminClient.from('ad_images').insert(inserts);
+      if (insErr) throw insErr;
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+

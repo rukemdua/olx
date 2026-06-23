@@ -486,8 +486,9 @@
   }
 
   .photoThumbs {
-    grid-template-columns: repeat(4, 1fr);
-    height: 80px;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 120px 120px;
+    height: auto;
   }
 
   .actions {

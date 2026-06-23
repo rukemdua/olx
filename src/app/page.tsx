@@ -94,15 +94,17 @@ export default async function Home() {
             Temukan barang-barang bersejarah atau jual barang yang ada kenangan masa lalu dengan mantan yang bikin penuh kamar. Proses cepat, aman, dan cuan.
           </p>
 
-          <div className={styles.heroSearch}>
+          <form action="/search" method="GET" className={styles.heroSearch}>
             <input
               type="text"
+              name="q"
               className={styles.heroSearchInput}
               placeholder="Cari mobil, motor, handphone, dan lainnya..."
               aria-label="Cari iklan"
+              required
             />
-            <button className={styles.heroSearchBtn} aria-label="Cari">🔍</button>
-          </div>
+            <button type="submit" className={styles.heroSearchBtn} aria-label="Cari">🔍</button>
+          </form>
 
           <div className={styles.heroStats}>
             <div className={styles.heroStat}>

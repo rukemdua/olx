@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './Jual.module.css';
 import { ImageIcon, Tag, X, Camera } from 'lucide-react';
 import MapPicker from '@/components/MapPicker';
 import { createClient } from '@/utils/supabase/client';
+import { compressImage, formatFileSize } from '@/utils/imageCompress';
 
 const MAX_PHOTOS = 5;
 
@@ -27,6 +28,7 @@ export default function PasangIklanPage() {
   const [submitError, setSubmitError] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -48,53 +50,85 @@ export default function PasangIklanPage() {
   const [parsedInfo, setParsedInfo] = useState<{lat: number, lng: number} | null>(null);
   const [mapTab, setMapTab] = useState<'search' | 'coord' | 'link'>('search');
   const [pinCoords, setPinCoords] = useState<[number, number] | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleSearchLocation = async () => {
-    if (!searchQuery.trim()) return;
+  // Tutup dropdown saat klik di luar
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchResults([]);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getLocationTypeLabel = (type: string, classType: string) => {
+    const typeMap: Record<string, string> = {
+      city: '🏙️ Kota', town: '🏘️ Kota Kecil', village: '🏡 Desa/Kelurahan',
+      suburb: '🏘️ Kecamatan', neighbourhood: '📍 Kelurahan', municipality: '🏛️ Kabupaten',
+      administrative: '📋 Wilayah', county: '🗺️ Kabupaten', state: '🗺️ Provinsi',
+      district: '📍 Kecamatan', quarter: '📍 Kelurahan', hamlet: '🏡 Dusun',
+      locality: '📍 Lokasi', highway: '🛣️ Jalan', road: '🛣️ Jalan',
+      mall: '🏬 Mall', commercial: '🏪 Area Komersial', industrial: '🏭 Kawasan Industri',
+      airport: '✈️ Bandara', station: '🚉 Stasiun', hospital: '🏥 Rumah Sakit',
+      school: '🏫 Sekolah', university: '🎓 Universitas',
+    };
+    return typeMap[type] || typeMap[classType] || '📍 Lokasi';
+  };
+
+  const fetchLocationSuggestions = useCallback(async (query: string) => {
+    if (!query.trim() || query.trim().length < 2) {
+      setSearchResults([]);
+      setSearchError('');
+      return;
+    }
     setIsSearching(true);
-    setSearchResults([]);
     setSearchError('');
-    
     try {
-      // 1. Initial Search
-      let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery + ', Indonesia')}&limit=5`);
+      // Cari dengan parameter Indonesia-specific
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=id&addressdetails=1&limit=10&accept-language=id`;
+      let res = await fetch(url, { headers: { 'Accept-Language': 'id' } });
       let data = await res.json();
-      
+
       if (data && data.length > 0) {
         setSearchResults(data);
       } else {
-        // 2. Fallback Search Logic
-        // If query has commas, drop the first part (e.g., "Jalan Mawar, Sleman" -> "Sleman")
-        // If space separated, drop first word (e.g., "Desa Sukamaju Tegal" -> "Sukamaju Tegal")
-        let fallbackQuery = '';
-        if (searchQuery.includes(',')) {
-          fallbackQuery = searchQuery.split(',').slice(1).join(',').trim();
+        // Fallback: tambahkan kata 'Indonesia' untuk hasil lebih luas
+        const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' Indonesia')}&addressdetails=1&limit=10&accept-language=id`;
+        res = await fetch(fallbackUrl, { headers: { 'Accept-Language': 'id' } });
+        data = await res.json();
+        if (data && data.length > 0) {
+          setSearchResults(data);
         } else {
-          const words = searchQuery.split(' ');
-          if (words.length > 1) {
-            fallbackQuery = words.slice(1).join(' ').trim();
-          }
-        }
-
-        if (fallbackQuery) {
-          res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery + ', Indonesia')}&limit=5`);
-          data = await res.json();
-          if (data && data.length > 0) {
-            setSearchResults(data);
-            setSearchError('Lokasi spesifik tidak ditemukan. Berikut hasil untuk area yang lebih luas.');
-          } else {
-            setSearchError('Lokasi sama sekali tidak ditemukan. Coba ketik nama Kota atau Kabupaten saja.');
-          }
-        } else {
-          setSearchError('Lokasi tidak ditemukan. Coba ketik nama Kota atau Kabupaten saja.');
+          setSearchResults([]);
+          setSearchError('Lokasi tidak ditemukan. Coba nama Desa, Kecamatan, atau Kota.');
         }
       }
-    } catch (error) {
-      console.error(error);
-      setSearchError('Gagal mencari lokasi. Periksa koneksi internet Anda.');
+    } catch {
+      setSearchError('Gagal mencari. Periksa koneksi internet Anda.');
     } finally {
       setIsSearching(false);
     }
+  }, []);
+
+  const handleSearchQueryChange = (value: string) => {
+    setSearchQuery(value);
+    setSearchError('');
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.trim().length >= 2) {
+      debounceRef.current = setTimeout(() => {
+        fetchLocationSuggestions(value);
+      }, 400);
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  const handleSearchLocation = async () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    await fetchLocationSuggestions(searchQuery);
   };
 
   const handleCoordInput = async () => {
@@ -340,6 +374,27 @@ export default function PasangIklanPage() {
     setPhotoFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const setAsMainPhoto = (index: number) => {
+    if (index === 0 || !photos[index]) return;
+    
+    // Swap photo at index with photo at 0
+    setPhotos(prev => {
+      const newArr = [...prev];
+      const temp = newArr[0];
+      newArr[0] = newArr[index];
+      newArr[index] = temp;
+      return newArr;
+    });
+    
+    setPhotoFiles(prev => {
+      const newArr = [...prev];
+      const temp = newArr[0];
+      newArr[0] = newArr[index];
+      newArr[index] = temp;
+      return newArr;
+    });
+  };
+
   const openFilePicker = (slotIndex: number) => {
     setActiveSlot(slotIndex);
     fileInputRef.current?.click();
@@ -386,16 +441,27 @@ export default function PasangIklanPage() {
       
       const adId = adData.id;
 
-      // 2. Upload Images
+      // 2. Kompres & Upload Images
       const imageUrls: string[] = [];
       for (let i = 0; i < photoFiles.length; i++) {
-        const file = photoFiles[i];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${adId}/${Date.now()}-${i}.${fileExt}`;
+        const originalFile = photoFiles[i];
+        setUploadProgress(`⏳ Mengompresi foto ${i + 1}/${photoFiles.length} (${formatFileSize(originalFile.size)})...`);
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        // Kompres & konversi ke WebP
+        const compressedFile = await compressImage(originalFile, {
+          maxDimension: 1280,
+          quality: 0.82,
+          maxSizeKB: 800,
+        });
+
+        const ratio = ((1 - compressedFile.size / originalFile.size) * 100).toFixed(0);
+        setUploadProgress(`⬆️ Mengupload foto ${i + 1}/${photoFiles.length} (${formatFileSize(originalFile.size)} → ${formatFileSize(compressedFile.size)}, hemat ${ratio}%)...`);
+
+        const fileName = `${adId}/${Date.now()}-${i}.webp`;
+
+        const { error: uploadError } = await supabase.storage
           .from('ad_images')
-          .upload(fileName, file);
+          .upload(fileName, compressedFile, { contentType: 'image/webp' });
 
         if (uploadError) {
           console.error('Error uploading image:', uploadError);
@@ -414,6 +480,8 @@ export default function PasangIklanPage() {
         const imageInserts = imageUrls.map(url => ({ ad_id: adId, url }));
         await supabase.from('ad_images').insert(imageInserts);
       }
+
+      setUploadProgress('');
 
       // 4. Success -> Redirect
       setShowSuccessModal(true);
@@ -583,13 +651,37 @@ export default function PasangIklanPage() {
                   } : {}}
                 >
                   {photos[slot] ? (
-                    <button
-                      className={styles.removePhotoBtn}
-                      onClick={(e) => { e.stopPropagation(); removePhoto(slot); }}
-                      title="Hapus foto"
-                    >
-                      <X size={14} />
-                    </button>
+                    <>
+                      <button
+                        className={styles.removePhotoBtn}
+                        onClick={(e) => { e.stopPropagation(); removePhoto(slot); }}
+                        title="Hapus foto"
+                      >
+                        <X size={14} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setAsMainPhoto(slot); }}
+                        style={{
+                          position: 'absolute',
+                          bottom: '6px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          backgroundColor: 'rgba(0,0,0,0.65)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          backdropFilter: 'blur(4px)',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title="Jadikan foto utama"
+                      >
+                        🌟 Jadikan Utama
+                      </button>
+                    </>
                   ) : (
                     <>
                       <Camera size={20} strokeWidth={1.5} />
@@ -636,48 +728,80 @@ export default function PasangIklanPage() {
               </button>
             </div>
 
-            {/* Tab: Search by name */}
+            {/* Tab: Search by name - Autocomplete */}
             {mapTab === 'search' && (
-              <div style={{ position: 'relative', marginBottom: searchError ? '4px' : '12px' }}>
+              <div ref={searchContainerRef} style={{ position: 'relative', marginBottom: searchError ? '4px' : '12px' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <input 
-                    type="text" 
-                    className={styles.input} 
-                    style={{ flex: 1, margin: 0 }}
-                    placeholder="Cari Desa, Kecamatan, Kabupaten, atau Kota..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleSearchLocation();
-                      }
-                    }}
-                  />
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <input 
+                      type="text" 
+                      className={styles.input} 
+                      style={{ width: '100%', margin: 0, paddingRight: isSearching ? '36px' : '12px' }}
+                      placeholder="Ketik nama Desa, Kecamatan, Kota, Landmark..."
+                      value={searchQuery}
+                      onChange={(e) => handleSearchQueryChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); handleSearchLocation(); }
+                        if (e.key === 'Escape') { setSearchResults([]); }
+                      }}
+                      autoComplete="off"
+                    />
+                    {isSearching && (
+                      <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '16px', animation: 'spin 1s linear infinite' }}>⏳</div>
+                    )}
+                    {searchQuery && !isSearching && (
+                      <button
+                        onClick={() => { setSearchQuery(''); setSearchResults([]); setSearchError(''); }}
+                        style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}
+                      >×</button>
+                    )}
+                  </div>
                   <button 
                     onClick={(e) => { e.preventDefault(); handleSearchLocation(); }}
                     disabled={isSearching}
-                    style={{ padding: '0 20px', backgroundColor: 'var(--color-primary-teal)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: isSearching ? 'not-allowed' : 'pointer', opacity: isSearching ? 0.7 : 1, whiteSpace: 'nowrap' }}
+                    style={{ padding: '0 18px', backgroundColor: 'var(--color-primary-teal)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: isSearching ? 'not-allowed' : 'pointer', opacity: isSearching ? 0.7 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
-                    {isSearching ? 'Mencari...' : 'Cari'}
+                    Cari
                   </button>
                 </div>
+
+                {/* Autocomplete Dropdown */}
                 {searchResults.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, backgroundColor: 'white', border: '1px solid var(--color-border)', borderRadius: '8px', marginTop: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '250px', overflowY: 'auto' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, backgroundColor: 'white', border: '1px solid var(--color-border)', borderRadius: '10px', marginTop: '6px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: '320px', overflowY: 'auto' }}>
+                    <div style={{ padding: '8px 12px', fontSize: '11px', color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                      {searchResults.length} lokasi ditemukan
+                    </div>
                     {searchResults.map((res, i) => {
-                      const nameParts = res.display_name.split(', ');
-                      const mainName = nameParts[0];
-                      const detailName = nameParts.slice(1).join(', ');
+                      const addr = res.address || {};
+                      const mainName = addr.amenity || addr.tourism || addr.leisure || addr.shop || addr.building || addr.road || addr.village || addr.suburb || addr.town || addr.city || addr.municipality || res.display_name.split(', ')[0];
+                      const area = [addr.suburb || addr.village, addr.city_district || addr.county, addr.city || addr.town || addr.municipality, addr.state].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ');
+                      const typeLabel = getLocationTypeLabel(res.type, res.class);
                       return (
                         <div 
                           key={i}
-                          style={{ padding: '12px', borderBottom: i === searchResults.length - 1 ? 'none' : '1px solid var(--color-light-gray)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px' }}
-                          onClick={() => { setMapCenter([parseFloat(res.lat), parseFloat(res.lon)]); setSearchResults([]); setSearchError(''); setSearchQuery(mainName); }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-light-gray)')}
+                          style={{ padding: '10px 14px', borderBottom: i === searchResults.length - 1 ? 'none' : '1px solid #f5f5f5', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px', transition: 'background 0.15s' }}
+                          onClick={() => {
+                            const lat = parseFloat(res.lat);
+                            const lon = parseFloat(res.lon);
+                            setMapCenter([lat, lon]);
+                            setPinCoords([lat, lon]);
+                            setParsedInfo({ lat, lng: lon });
+                            const coordStr = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                            setFormData(prev => ({ ...prev, location: coordStr }));
+                            setAddress(res.display_name);
+                            setSearchResults([]);
+                            setSearchError('');
+                            setSearchQuery(mainName);
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
                           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
                         >
-                          <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-text-main)' }}>{mainName}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{detailName}</div>
+                          <div style={{ fontSize: '20px', marginTop: '1px', flexShrink: 0 }}>📍</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--color-primary-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mainName}</div>
+                            {area && <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{area}</div>}
+                            <div style={{ fontSize: '11px', marginTop: '4px', display: 'inline-block', backgroundColor: '#eef9f4', color: 'var(--color-primary-teal)', padding: '1px 7px', borderRadius: '20px', fontWeight: 600 }}>{typeLabel}</div>
+                          </div>
                         </div>
                       );
                     })}
@@ -844,11 +968,18 @@ export default function PasangIklanPage() {
             ⚠️ {submitError}
           </div>
         )}
+        
+        {uploadProgress && (
+          <div style={{ backgroundColor: '#eef9f4', padding: '12px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #a3e4d7', color: 'var(--color-primary-teal)', fontSize: '14px', textAlign: 'center', fontWeight: 600 }}>
+            {uploadProgress}
+          </div>
+        )}
+
         <div className={styles.actions}>
           <button className={styles.draftButton} disabled={isSubmitting}>Simpan Draft</button>
           <button className={styles.submitButton} onClick={handleSubmit} disabled={isSubmitting}>
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              {isSubmitting ? '⏳ Menayangkan...' : 'Tayangkan Iklan Sekarang'}
+              {isSubmitting ? '⏳ Sedang Diproses...' : 'Tayangkan Iklan Sekarang'}
             </span>
           </button>
         </div>

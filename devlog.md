@@ -79,5 +79,28 @@ Dokumen ini digunakan untuk mencatat progres, pembaruan fitur, perbaikan bug, da
 
 ---
 
+## 2026-06-22 - Fase 3: UI Polish & Content Update
+- **Fitur / Modul:** Pembaruan Teks Konten Beranda & Footer
+- **Deskripsi:** Mengganti semua penggunaan kata "adopsi/diadopsi/mengadopsi" menjadi "beli/dibeli/membeli" agar lebih relevan secara konteks marketplace. Memperbarui teks hero title beranda menjadi "Jual semua Barang dari Mantan, supaya Lebih Gampang Move On!", memperjelas kalimat subtitle hero, dan mengganti teks copyright footer dari "Kenangan Dilindungi" menjadi "Hak Cipta Dilindungi".
+- **Status:** Selesai
+- **Catatan Teknis / Kendala:** Perubahan dilakukan di `src/app/page.tsx` dan `src/components/Footer/Footer.tsx`.
+
+## 2026-06-22 - Fase 3: UI Polish Mobile
+- **Fitur / Modul:** Responsivitas Logo Header & Footer di Mobile
+- **Deskripsi:** Memperkecil ukuran font teks logo "Toko Mantan" pada tampilan mobile (dari 26px menjadi 16px di Header, dan 26px menjadi 20px di Footer) menggunakan media query `@media (max-width: 768px)` agar tidak menggeser tombol navigasi ke baris baru dan tampilan tetap proporsional di layar HP. Ukuran desktop tidak berubah.
+- **Status:** Selesai
+- **Catatan Teknis / Kendala:** Perubahan hanya di dalam blok `@media (max-width: 768px)` di `Header.module.css` dan `Footer.module.css`.
+
+## 2026-06-22 - Fase 7: Deployment & Bug Fixing
+- **Fitur / Modul:** Perbaikan Error Build Vercel & Deployment Perdana
+- **Deskripsi:** Berhasil melakukan deployment pertama ke Vercel di URL https://olx-beta-woad.vercel.app/. Proses ini menemukan dan memperbaiki 4 bug TypeScript/Next.js yang hanya muncul saat proses build produksi (tidak terdeteksi di local dev): (1) Parameter `s` tanpa tipe eksplisit pada `.map(s => s.trim())` di `page.tsx` dan `[category]/page.tsx` → diperbaiki menjadi `(s: string) => s.trim()`. (2) `is_read` tidak ada dalam kolom `select` pada query `lastMessages` di `chat/page.tsx`. (3) `useSearchParams()` di `login/page.tsx` tidak dibungkus dengan `<Suspense>` → diperbaiki dengan memisahkan `LoginContent` dan membungkusnya dengan `<Suspense>`. (4) Variabel environment Supabase tidak terbaca Vercel saat pre-render halaman `/_not-found` → diperbaiki dengan menanamkan `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY` langsung ke `next.config.ts` melalui properti `env`.
+- **Status:** Selesai
+- **Catatan Teknis / Kendala:** Vercel menggunakan cache build (`Restored build cache`) yang menyebabkan variabel environment baru tidak terbaca meski sudah diset di dashboard. Solusi permanen: hardcode public env vars ke `next.config.ts`. Pipeline CI/CD aktif: setiap `git push` ke branch `main` otomatis men-trigger deployment baru di Vercel.
+
+---
+
 ## Sesi Berikutnya — Yang Perlu Dikerjakan
-1. **Chat Fungsional** — Halaman `/chat` masih UI statis, belum terhubung ke Supabase Realtime untuk berkirim pesan sungguhan antara penjual dan pembeli.
+1. **Monitoring & Feedback** — Pantau performa dan error di Vercel Analytics setelah live.
+2. **Optimasi Gambar** — Konversi gambar ke format WebP dan aktifkan `next/image` optimization.
+3. **Push Notification** — Implementasi notifikasi pesan baru via browser/FCM.
+4. **Verifikasi Pengguna** — Fitur upload KTP dan badge "Verified" di profil.

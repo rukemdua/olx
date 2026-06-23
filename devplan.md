@@ -40,8 +40,8 @@ Dokumen ini menguraikan fase-fase pembangunan platform marketplace (C2C & B2C) b
 - [ ] Perbaikan bug dan finalisasi performa visual (Optimasi aset gambar format WebP, caching).
 
 ## Fase 7: Deployment & Peluncuran (Minggu 12)
-- [ ] Setup environment produksi (Production server, Database terpisah, Domain, SSL).
-- [ ] Setup pipeline CI/CD untuk otomatisasi rilis.
-- [ ] Deployment sistem Frontend dan Backend ke production.
-- [ ] Peluncuran platform secara publik atau versi beta.
+- [x] Setup environment produksi (Vercel + Supabase, Domain beta aktif).
+- [x] Setup pipeline CI/CD: GitHub → Vercel auto-deploy pada setiap push ke branch `main`.
+- [x] Deployment Frontend ke Vercel berhasil. URL live: https://olx-beta-woad.vercel.app/
+- [x] Peluncuran platform versi beta.
 - [ ] Pemantauan/monitoring metrik kesuksesan (MAU, Ad Liquidity, dll).

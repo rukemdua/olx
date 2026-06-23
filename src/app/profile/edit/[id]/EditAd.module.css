@@ -192,23 +192,24 @@
   background-color: rgba(0, 181, 106, 0.05);
 }
 
-/* Photo Management */
-.existingPhotos {
+/* Photo Management (Unified) */
+.unifiedPhotos {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
 
-.existingPhotoItem {
+.unifiedPhotoItem {
   position: relative;
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--color-border);
+  background-color: var(--color-light-gray);
 }
 
-.existingPhotoItem img {
+.unifiedPhotoItem img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -239,6 +240,51 @@
   background-color: #e53935;
 }
 
+.setMainBtn {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0,0,0,0.65);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.mainBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background-color: #fbc02d;
+  color: #333;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 6px;
+  border-radius: 4px;
+  z-index: 5;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.newBadge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background-color: var(--color-primary-teal);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 5;
+}
+
 .addPhotoBtn {
   display: flex;
   flex-direction: column;
@@ -261,39 +307,6 @@
   border-color: var(--color-primary-teal);
   color: var(--color-primary-teal);
   background-color: rgba(0, 181, 106, 0.04);
-}
-
-.newPhotoPreviews {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.newPhotoItem {
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 2px solid var(--color-primary-teal);
-}
-
-.newPhotoItem img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.newBadge {
-  position: absolute;
-  bottom: 4px;
-  left: 4px;
-  background-color: var(--color-primary-teal);
-  color: white;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
 }
 
 .photoCount {

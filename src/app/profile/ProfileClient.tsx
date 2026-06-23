@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import styles from './Profile.module.css';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
+import { compressImage } from '@/utils/imageCompress';
 
 type AdImage = { url: string };
 
@@ -50,6 +51,10 @@ export default function ProfileClient({ profileData, myAds }: ProfileProps) {
   // Profile form state
   const [fullName, setFullName] = useState(profileData.full_name || '');
   const [phone, setPhone] = useState(profileData.phone || '');
+  const [avatarPreview, setAvatarPreview] = useState(profileData.avatar_url || '');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -66,16 +71,68 @@ export default function ProfileClient({ profileData, myAds }: ProfileProps) {
     }, 50);
   };
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+      // Switch to settings tab automatically if they change from top avatar
+      if (activeTab !== 'pengaturan') {
+        handleTabChange('pengaturan');
+      }
+    }
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     setMessage('');
-    const { error } = await supabase
-      .from('profiles')
-      .update({ full_name: fullName, phone })
-      .eq('id', profileData.id);
-    setIsSaving(false);
-    setMessage(error ? 'Gagal menyimpan: ' + error.message : 'Profil berhasil diperbarui!');
+
+    try {
+      let finalAvatarUrl = avatarPreview;
+
+      // Jika ada file avatar baru, upload dulu
+      if (avatarFile) {
+        setMessage('Mengunggah foto profil...');
+        const compressedFile = await compressImage(avatarFile, {
+          maxDimension: 800,
+          quality: 0.8,
+          maxSizeKB: 500,
+        });
+
+        const fileName = `avatars/${profileData.id}/${Date.now()}.webp`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('ad_images')
+          .upload(fileName, compressedFile, { contentType: 'image/webp' });
+
+        if (uploadError) throw new Error('Gagal mengunggah avatar: ' + uploadError.message);
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('ad_images')
+          .getPublicUrl(fileName);
+
+        finalAvatarUrl = publicUrl;
+      }
+
+      setMessage('Menyimpan profil...');
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName, phone, avatar_url: finalAvatarUrl === '' ? null : finalAvatarUrl })
+        .eq('id', profileData.id);
+
+      if (error) throw new Error(error.message);
+
+      setMessage('Profil berhasil diperbarui!');
+      setAvatarFile(null); // Reset file
+      
+      // Optionally trigger router refresh if needed
+      // window.location.reload();
+    } catch (err: any) {
+      setMessage('Gagal menyimpan: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const confirmDelete = (id: string) => {
@@ -107,9 +164,9 @@ export default function ProfileClient({ profileData, myAds }: ProfileProps) {
 
   const favoriteAds: Ad[] = [];
   const joinDate = new Date(profileData.created_at).toLocaleDateString('id-ID', { year: 'numeric' });
-  const avatarUrl =
-    profileData.avatar_url ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.full_name || 'User')}&background=00b56a&color=fff`;
+  const avatarUrlDisplay =
+    avatarPreview ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || 'User')}&background=00b56a&color=fff`;
 
   return (
     <div className={styles.container}>
@@ -138,8 +195,13 @@ export default function ProfileClient({ profileData, myAds }: ProfileProps) {
 
       {/* ===== User Info Card ===== */}
       <div className={styles.profileCard}>
-        <div className={styles.avatarWrapper}>
-          <img src={avatarUrl} alt="User Avatar" className={styles.avatar} />
+        <input type="file" ref={avatarInputRef} accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+        
+        <div className={styles.avatarWrapper} onClick={() => avatarInputRef.current?.click()} style={{ cursor: 'pointer' }} title="Ubah Foto Profil">
+          <img src={avatarUrlDisplay} alt="User Avatar" className={styles.avatar} />
+          <div className={styles.avatarOverlay}>
+            <span>Ubah</span>
+          </div>
         </div>
         <div className={styles.userInfo}>
           <h1 className={styles.userName}>{profileData.full_name || 'Pengguna'}</h1>
@@ -248,6 +310,18 @@ export default function ProfileClient({ profileData, myAds }: ProfileProps) {
                     {message}
                   </div>
                 )}
+                
+                <div className={styles.formGroup} style={{ marginBottom: 24 }}>
+                  <label className={styles.label}>Foto Profil</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <img src={avatarUrlDisplay} alt="Avatar Preview" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '2px solid #e0e0e0' }} />
+                    <button type="button" onClick={() => avatarInputRef.current?.click()} className={styles.editButton} style={{ margin: 0 }}>
+                      Pilih Foto Baru
+                    </button>
+                    {avatarFile && <span style={{ fontSize: 13, color: '#e53935', fontWeight: 600 }}>Belum disimpan*</span>}
+                  </div>
+                </div>
+
                 <div className={styles.formGroup}>
                   <label htmlFor="name" className={styles.label}>Nama Lengkap</label>
                   <input type="text" id="name" value={fullName} onChange={e => setFullName(e.target.value)} className={styles.input} required />

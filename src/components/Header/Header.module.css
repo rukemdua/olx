@@ -259,6 +259,62 @@
   border-bottom-color: var(--color-primary-teal);
 }
 
+/* ── TOAST NOTIFICATION ── */
+.toastNotification {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  background-color: white;
+  border-left: 4px solid var(--color-primary-teal);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  z-index: 9999;
+  min-width: 280px;
+  max-width: 350px;
+  animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.toastIcon {
+  font-size: 24px;
+  background-color: #e8f5e9;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.toastContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.toastTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  margin-bottom: 4px;
+}
+
+.toastMessage {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── MOBILE ── */
 @media (max-width: 768px) {
   .topBar {
@@ -317,5 +373,19 @@
   .categoriesNav a {
     font-size: 12px;
     padding: 8px 10px;
+  }
+
+  .toastNotification {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    min-width: 0;
+    max-width: none;
+    animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-30px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 }

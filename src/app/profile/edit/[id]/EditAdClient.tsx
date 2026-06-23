@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from './EditAd.module.css';
 import { createClient } from '@/utils/supabase/client';
-import { deleteAdImageAction } from './actions';
+import { deleteAdImageAction, reorderAdImagesAction } from './actions';
+import { compressImage, formatFileSize } from '@/utils/imageCompress';
 
 type AdImage = { id: string; url: string };
 
@@ -20,6 +21,10 @@ type Ad = {
   ad_images: AdImage[];
 };
 
+type PhotoItem = 
+  | { type: 'existing'; id: string; url: string; preview: string }
+  | { type: 'new'; file: File; preview: string };
+
 const CATEGORIES = ['Mobil', 'Motor', 'Properti', 'Elektronik', 'Jasa', 'Hobi'];
 
 export default function EditAdClient({ ad }: { ad: Ad }) {
@@ -33,23 +38,26 @@ export default function EditAdClient({ ad }: { ad: Ad }) {
   const [condition, setCondition] = useState(ad.condition);
   const [description, setDescription] = useState(ad.description);
 
-  // Existing photos — track which ones to delete
-  const [existingPhotos, setExistingPhotos] = useState<AdImage[]>(ad.ad_images || []);
-  const [photosToDelete, setPhotosToDelete] = useState<AdImage[]>([]);
-
-  // New photos to upload
-  const [newPhotoFiles, setNewPhotoFiles] = useState<File[]>([]);
-  const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([]);
+  // Unified photos array
+  const [photos, setPhotos] = useState<PhotoItem[]>(
+    ad.ad_images.map(img => ({ type: 'existing', id: img.id, url: img.url, preview: img.url }))
+  );
+  // Track existing photos that need to be deleted from storage
+  const [photosToDelete, setPhotosToDelete] = useState<PhotoItem[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
 
-  const totalPhotos = existingPhotos.length + newPhotoFiles.length;
+  const totalPhotos = photos.length;
 
-  const handleRemoveExisting = (photo: AdImage) => {
-    setExistingPhotos(prev => prev.filter(p => p.url !== photo.url));
-    setPhotosToDelete(prev => [...prev, photo]);
+  const handleRemovePhoto = (index: number) => {
+    const photo = photos[index];
+    if (photo.type === 'existing') {
+      setPhotosToDelete(prev => [...prev, photo]);
+    }
+    setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleAddPhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,14 +65,27 @@ export default function EditAdClient({ ad }: { ad: Ad }) {
     const allowed = 5 - totalPhotos;
     if (allowed <= 0) return;
     const picked = files.slice(0, allowed);
-    setNewPhotoFiles(prev => [...prev, ...picked]);
-    setNewPhotoPreviews(prev => [...prev, ...picked.map(f => URL.createObjectURL(f))]);
+    
+    const newItems: PhotoItem[] = picked.map(file => ({
+      type: 'new',
+      file,
+      preview: URL.createObjectURL(file)
+    }));
+    
+    setPhotos(prev => [...prev, ...newItems]);
     e.target.value = '';
   };
 
-  const handleRemoveNew = (index: number) => {
-    setNewPhotoFiles(prev => prev.filter((_, i) => i !== index));
-    setNewPhotoPreviews(prev => prev.filter((_, i) => i !== index));
+  const setAsMainPhoto = (index: number) => {
+    if (index === 0 || !photos[index]) return;
+    
+    setPhotos(prev => {
+      const newArr = [...prev];
+      const temp = newArr[0];
+      newArr[0] = newArr[index];
+      newArr[index] = temp;
+      return newArr;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,33 +115,63 @@ export default function EditAdClient({ ad }: { ad: Ad }) {
 
       // 2. Hapus foto lama via Server Action (Bypass RLS)
       for (const photo of photosToDelete) {
-        const res = await deleteAdImageAction(photo.url, ad.id);
-        if (!res.success) {
-          throw new Error(`Gagal menghapus foto: ${res.error}`);
+        if (photo.type === 'existing') {
+          const res = await deleteAdImageAction(photo.url, ad.id);
+          if (!res.success) {
+            throw new Error(`Gagal menghapus foto lama: ${res.error}`);
+          }
         }
       }
 
-      // 3. Upload foto baru
-      for (let i = 0; i < newPhotoFiles.length; i++) {
-        const file = newPhotoFiles[i];
-        const ext = file.name.split('.').pop();
-        const fileName = `${ad.id}/${Date.now()}-edit-${i}.${ext}`;
+      // 3. Upload foto baru & susun URL final sesuai urutan di UI
+      const finalUrls: string[] = [];
+      let newPhotoCount = 1;
+      const totalNewPhotos = photos.filter(p => p.type === 'new').length;
 
-        const { error: uploadError } = await supabase.storage
-          .from('ad_images')
-          .upload(fileName, file);
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        if (photo.type === 'existing') {
+          finalUrls.push(photo.url);
+        } else {
+          const originalFile = photo.file;
+          setUploadProgress(`⏳ Mengompresi foto baru ${newPhotoCount}/${totalNewPhotos} (${formatFileSize(originalFile.size)})...`);
 
-        if (uploadError) throw new Error('Gagal mengunggah foto baru: ' + uploadError.message);
+          const compressedFile = await compressImage(originalFile, {
+            maxDimension: 1280,
+            quality: 0.82,
+            maxSizeKB: 800,
+          });
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('ad_images')
-          .getPublicUrl(fileName);
+          const ratio = ((1 - compressedFile.size / originalFile.size) * 100).toFixed(0);
+          setUploadProgress(`⬆️ Mengupload foto baru ${newPhotoCount}/${totalNewPhotos} (${formatFileSize(originalFile.size)} → ${formatFileSize(compressedFile.size)}, hemat ${ratio}%)...`);
 
-        const { error: insertErr } = await supabase.from('ad_images').insert({ ad_id: ad.id, url: publicUrl });
-        if (insertErr) throw new Error('Gagal menyimpan URL foto baru: ' + insertErr.message);
+          const fileName = `${ad.id}/${Date.now()}-edit-${i}.webp`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('ad_images')
+            .upload(fileName, compressedFile, { contentType: 'image/webp' });
+
+          if (uploadError) throw new Error('Gagal mengunggah foto baru: ' + uploadError.message);
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('ad_images')
+            .getPublicUrl(fileName);
+
+          finalUrls.push(publicUrl);
+          newPhotoCount++;
+        }
       }
 
-      // 4. Sukses
+      // 4. Terapkan urutan baru di DB
+      if (finalUrls.length > 0) {
+        setUploadProgress(`🔄 Menyimpan urutan gambar utama...`);
+        const reorderRes = await reorderAdImagesAction(ad.id, finalUrls);
+        if (!reorderRes.success) throw new Error('Gagal mengurutkan foto: ' + reorderRes.error);
+      }
+
+      setUploadProgress('');
+
+      // 5. Sukses
       setShowSuccess(true);
       setTimeout(() => {
         router.push('/profile');
@@ -130,6 +181,7 @@ export default function EditAdClient({ ad }: { ad: Ad }) {
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan saat menyimpan. Coba lagi.');
       setIsSubmitting(false);
+      setUploadProgress('');
     }
   };
 
@@ -220,33 +272,39 @@ export default function EditAdClient({ ad }: { ad: Ad }) {
           <div className={styles.formCard}>
             <div className={styles.sectionTitle}>📸 Foto Iklan</div>
 
-            {existingPhotos.length > 0 && (
-              <div className={styles.existingPhotos}>
-                {existingPhotos.map(photo => (
-                  <div key={photo.id} className={styles.existingPhotoItem}>
-                    <img src={photo.url} alt="foto iklan" />
-                    <button
-                      type="button"
-                      className={styles.removeExistingBtn}
-                      onClick={() => handleRemoveExisting(photo)}
-                      title="Hapus foto ini"
-                    >×</button>
-                  </div>
-                ))}
-              </div>
-            )}
+            {photos.length > 0 && (
+              <div className={styles.unifiedPhotos}>
+                {photos.map((photo, i) => (
+                  <div key={i} className={styles.unifiedPhotoItem}>
+                    <img src={photo.preview} alt={`foto iklan ${i}`} />
+                    
+                    {photo.type === 'new' && (
+                      <span className={styles.newBadge}>Baru</span>
+                    )}
 
-            {newPhotoPreviews.length > 0 && (
-              <div className={styles.newPhotoPreviews}>
-                {newPhotoPreviews.map((src, i) => (
-                  <div key={i} className={styles.newPhotoItem}>
-                    <img src={src} alt={`preview ${i}`} />
-                    <span className={styles.newBadge}>Baru</span>
+                    {i === 0 && (
+                      <span className={styles.mainBadge}>Gambar Utama</span>
+                    )}
+                    
                     <button
                       type="button"
                       className={styles.removeExistingBtn}
-                      onClick={() => handleRemoveNew(i)}
-                    >×</button>
+                      onClick={() => handleRemovePhoto(i)}
+                      title="Hapus foto"
+                    >
+                      ×
+                    </button>
+                    
+                    {i > 0 && (
+                      <button
+                        type="button"
+                        className={styles.setMainBtn}
+                        onClick={() => setAsMainPhoto(i)}
+                        title="Jadikan foto utama"
+                      >
+                        🌟 Jadikan Utama
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -267,11 +325,18 @@ export default function EditAdClient({ ad }: { ad: Ad }) {
           {/* Error */}
           {error && <div className={styles.errorAlert}>⚠️ {error}</div>}
 
+          {/* Progress */}
+          {uploadProgress && (
+            <div style={{ backgroundColor: '#eef9f4', padding: '12px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #a3e4d7', color: 'var(--color-primary-teal)', fontSize: '14px', textAlign: 'center', fontWeight: 600 }}>
+              {uploadProgress}
+            </div>
+          )}
+
           {/* Actions */}
           <div className={styles.submitRow}>
             <Link href="/profile" className={styles.cancelLink}>Batal</Link>
             <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
-              {isSubmitting ? '⏳ Menyimpan...' : '✅ Simpan Perubahan'}
+              {isSubmitting ? '⏳ Sedang Diproses...' : '✅ Simpan Perubahan'}
             </button>
           </div>
         </form>

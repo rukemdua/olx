@@ -12,6 +12,7 @@ export default function Header() {
   const [user, setUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [toastNotification, setToastNotification] = useState<{ sender: string; content: string } | null>(null);
   const [supabase] = useState(() => createClient());
   const router = useRouter();
 
@@ -45,13 +46,25 @@ export default function Header() {
 
       // Subscribe sekali — jangan re-subscribe tiap navigasi
       const channel = supabase.channel('header_notif')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
           const newMsg = payload.new as any;
           console.log('[Header] 📩 Realtime INSERT masuk:', newMsg);
           if (newMsg.sender_id !== userId) {
             if (window.location.pathname !== '/chat') {
               console.log('[Header] ➕ Menambah badge +1');
               setUnreadCount(prev => prev + 1);
+
+              // Tampilkan Notifikasi Toast
+              const { data: senderData } = await supabase.from('profiles').select('full_name').eq('id', newMsg.sender_id).single();
+              
+              setToastNotification({
+                sender: senderData?.full_name || 'Seseorang',
+                content: newMsg.content
+              });
+              
+              setTimeout(() => {
+                setToastNotification(null);
+              }, 4000);
             }
           }
         })
@@ -139,6 +152,17 @@ export default function Header() {
 
   return (
     <header className={styles.header}>
+      
+      {/* Toast Notification Popup */}
+      {toastNotification && (
+        <div className={styles.toastNotification}>
+          <div className={styles.toastIcon}>💬</div>
+          <div className={styles.toastContent}>
+            <div className={styles.toastTitle}>Pesan dari {toastNotification.sender}</div>
+            <div className={styles.toastMessage}>{toastNotification.content}</div>
+          </div>
+        </div>
+      )}
 
       {/* Top Bar */}
       <div className={styles.topBar}>
